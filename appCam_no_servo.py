@@ -8,7 +8,7 @@ import numpy as np
 app = Flask(__name__)
 
 class StereoCamera:
-    def __init__(self, left_src=0, right_src=2, width=640, height=480):
+    def __init__(self, left_src=2, right_src=2, width=640, height=480):
         self.left_src = left_src
         self.right_src = right_src
         self.width = width
@@ -19,6 +19,16 @@ class StereoCamera:
         self.cap_left = cv2.VideoCapture(self.left_src)
         print(f"📷 Открываю правую камеру (src={right_src})...")
         self.cap_right = cv2.VideoCapture(self.right_src)
+        
+        if not self.cap_left.isOpened():
+            print(f"❌ Ошибка: не удалось открыть камеру {left_src}")
+        else:
+            print(f"✅ Левая камера {left_src} открыта")
+            
+        if not self.cap_right.isOpened():
+            print(f"❌ Ошибка: не удалось открыть камеру {right_src}")
+        else:
+            print(f"✅ Правая камера {right_src} открыта")
         
         self.cap_left.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.cap_left.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
@@ -89,9 +99,8 @@ class StereoCamera:
         if self.cap_right:
             self.cap_right.release()
 
-# Инициализация стереокамеры
-# Сначала пробуем левая=0, правая=2
-camera = StereoCamera(left_src=0, right_src=2, width=640, height=480)
+# Инициализация камеры (левая и правая используют один и тот же источник video2)
+camera = StereoCamera(left_src=2, right_src=2, width=640, height=480)
 
 @app.route('/')
 def index():
@@ -105,7 +114,8 @@ def video_feed_left():
             if frame:
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            time.sleep(0.03)
+            else:
+                time.sleep(0.05)
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/video_feed/right')
@@ -116,7 +126,8 @@ def video_feed_right():
             if frame:
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            time.sleep(0.03)
+            else:
+                time.sleep(0.05)
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/video_feed/combined')
@@ -127,7 +138,8 @@ def video_feed_combined():
             if frame:
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            time.sleep(0.03)
+            else:
+                time.sleep(0.05)
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.teardown_appcontext
@@ -135,13 +147,13 @@ def cleanup(exception=None):
     global camera
     if camera:
         camera.stop()
+        print("📷 Камера остановлена")
 
 if __name__ == '__main__':
-    print("=" * 60)
+    print("=" * 50)
     print("🎥 СТЕРЕОКАМЕРА (без сервоприводов)")
-    print("📹 Левая камера: /dev/video0")
-    print("📹 Правая камера: /dev/video2")
-    print("🌐 Откройте в браузере: http://localhost:5000")
-    print("🌐 С другого компьютера: http://192.168.1.53:5000")
-    print("=" * 60)
+    print("📹 Камера: /dev/video2")
+    print("🌐 http://localhost:5000")
+    print("🌐 http://192.168.1.53:5000")
+    print("=" * 50)
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
