@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Веб-сервер с графическим интерфейсом для USB-камеры
+Оптимизированная версия с правильным потоковым видео
 """
 
 import cv2
@@ -42,7 +43,6 @@ HTML_TEMPLATE = '''
             text-align: center;
             color: #00adb5;
             margin-bottom: 20px;
-            font-size: 2em;
         }
         
         .camera-panel {
@@ -50,12 +50,10 @@ HTML_TEMPLATE = '''
             border-radius: 15px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
         .video-container {
             text-align: center;
-            margin-bottom: 20px;
         }
         
         .video-container img {
@@ -63,7 +61,6 @@ HTML_TEMPLATE = '''
             border-radius: 10px;
             border: 3px solid #00adb5;
             background: #000;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         
         .controls {
@@ -99,7 +96,6 @@ HTML_TEMPLATE = '''
             padding: 10px 15px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 14px;
             transition: all 0.3s ease;
         }
         
@@ -108,31 +104,11 @@ HTML_TEMPLATE = '''
             transform: scale(1.05);
         }
         
-        button.primary {
-            background: #4caf50;
-        }
-        
-        button.primary:hover {
-            background: #45a049;
-        }
-        
-        button.danger {
-            background: #f44336;
-        }
-        
-        button.danger:hover {
-            background: #da190b;
-        }
-        
         .info-panel {
             background: #1a1a2e;
             border-radius: 10px;
             padding: 15px;
             text-align: center;
-        }
-        
-        .info-panel p {
-            margin: 5px 0;
         }
         
         .status {
@@ -148,49 +124,17 @@ HTML_TEMPLATE = '''
             color: white;
         }
         
-        .status.offline {
-            background: #f44336;
-            color: white;
-        }
-        
         .ip-address {
             background: #0f3460;
             padding: 5px 10px;
             border-radius: 5px;
             font-family: monospace;
-            font-size: 14px;
-        }
-        
-        .slider-container {
-            text-align: center;
-            margin-top: 10px;
-        }
-        
-        input[type="range"] {
-            width: 100%;
-            margin: 10px 0;
-        }
-        
-        .angle-value {
-            font-size: 18px;
-            font-weight: bold;
-            color: #00adb5;
-        }
-        
-        @media (max-width: 768px) {
-            .controls {
-                grid-template-columns: 1fr;
-            }
-            .button-group button {
-                padding: 8px 12px;
-                font-size: 12px;
-            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📹 USB Camera Control Panel</h1>
+        <h1>📹 USB Camera Live Stream</h1>
         
         <div class="camera-panel">
             <div class="video-container">
@@ -200,81 +144,33 @@ HTML_TEMPLATE = '''
             <div class="info-panel">
                 <p>📷 Статус: <span id="status" class="status online">ОНЛАЙН</span></p>
                 <p>🌐 IP-адрес: <span class="ip-address">{{ ip_address }}:5000</span></p>
-                <p>📱 Доступно с любого устройства в сети</p>
             </div>
         </div>
         
         <div class="controls">
             <div class="control-group">
-                <h3>🔄 Управление камерой</h3>
+                <h3>🔄 Управление</h3>
                 <div class="button-group">
                     <button onclick="location.reload()">🔄 Обновить</button>
-                    <button onclick="resetCamera()">📷 Сброс камеры</button>
-                    <button onclick="toggleMirror()">🪞 Зеркало</button>
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <h3>🎨 Настройки изображения</h3>
-                <div class="button-group">
-                    <button onclick="setBrightness('up')">🔆 Яркость +</button>
-                    <button onclick="setBrightness('down')">🔅 Яркость -</button>
-                    <button onclick="setContrast('up')">🎨 Контраст +</button>
-                    <button onclick="setContrast('down')">🎨 Контраст -</button>
+                    <button onclick="resetCamera()">📷 Сброс</button>
                 </div>
             </div>
         </div>
         
         <div class="info-panel">
-            <p>💡 <strong>Совет:</strong> Для полноэкранного режима используйте <a href="/video_only" target="_blank" style="color: #00adb5;">/video_only</a></p>
-            <p>🖱️ Нажмите F11 для полноэкранного режима браузера</p>
+            <p>💡 Полноэкранный режим: <a href="/video_only" target="_blank" style="color: #00adb5;">/video_only</a></p>
         </div>
     </div>
     
     <script>
-        let mirrorEnabled = false;
-        
-        function updateFeed() {
-            let img = document.getElementById('camera-feed');
-            let timestamp = new Date().getTime();
-            let url = "{{ url_for('video_feed') }}?t=" + timestamp;
-            if (mirrorEnabled) {
-                url += "&mirror=1";
-            }
-            img.src = url;
-            setTimeout(updateFeed, 50);
-        }
-        
         function resetCamera() {
             fetch('/reset')
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Camera reset:', data);
+                    console.log('Camera reset');
                 });
         }
         
-        function toggleMirror() {
-            mirrorEnabled = !mirrorEnabled;
-            updateFeed();
-        }
-        
-        function setBrightness(direction) {
-            fetch('/brightness/' + direction)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Brightness:', data);
-                });
-        }
-        
-        function setContrast(direction) {
-            fetch('/contrast/' + direction)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Contrast:', data);
-                });
-        }
-        
-        // Проверка статуса камеры
         function checkStatus() {
             fetch('/status')
                 .then(response => response.json())
@@ -290,8 +186,6 @@ HTML_TEMPLATE = '''
                 });
         }
         
-        // Запуск обновления
-        updateFeed();
         setInterval(checkStatus, 5000);
     </script>
 </body>
@@ -301,11 +195,7 @@ HTML_TEMPLATE = '''
 # Глобальные переменные
 frame = None
 lock = threading.Lock()
-running = True
 camera = None
-mirror = False
-brightness = 0
-contrast = 0
 
 def init_camera():
     """Инициализация камеры"""
@@ -328,18 +218,16 @@ def init_camera():
     return True
 
 def capture_thread():
-    """Поток для непрерывного захвата кадров"""
-    global frame, running, camera, mirror
+    """Поток для захвата кадров"""
+    global frame, camera
     
-    while running:
+    while True:
         if camera and camera.isOpened():
             ret, img = camera.read()
             if ret:
-                if mirror:
-                    img = cv2.flip(img, 1)
                 with lock:
                     frame = img.copy()
-        time.sleep(0.03)
+        time.sleep(0.03)  # ~30 fps
 
 def get_ip():
     """Получение IP-адреса"""
@@ -362,16 +250,15 @@ def index():
 def video_feed():
     """Видеопоток MJPEG"""
     def generate():
-        global frame
         while True:
             with lock:
                 if frame is not None:
-                    ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
                     if ret:
                         yield (b'--frame\r\n'
-                               b'Content-Type: image/jpeg\r\n'
-                               b'Cache-Control: no-cache\r\n\r\n' + jpeg.tobytes() + b'\r\n')
-            time.sleep(0.03)
+                               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
+            # Контроль частоты кадров - не чаще 30 FPS
+            time.sleep(0.033)
     
     return Response(generate(), 
                    mimetype='multipart/x-mixed-replace; boundary=frame')
@@ -385,8 +272,8 @@ def video_only():
     <head>
         <title>Video Stream</title>
         <style>
-            body { margin: 0; background: black; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-            img { max-width: 100%; max-height: 100vh; }
+            body { margin: 0; background: black; }
+            img { width: 100%; height: 100vh; object-fit: contain; }
         </style>
     </head>
     <body>
@@ -408,32 +295,6 @@ def reset():
             frame = None
     return {'status': 'ok'}
 
-@app.route('/brightness/<direction>')
-def set_brightness(direction):
-    """Настройка яркости"""
-    global brightness, camera
-    if direction == 'up':
-        brightness += 10
-    else:
-        brightness -= 10
-    brightness = max(-100, min(100, brightness))
-    if camera:
-        camera.set(cv2.CAP_PROP_BRIGHTNESS, brightness)
-    return {'brightness': brightness}
-
-@app.route('/contrast/<direction>')
-def set_contrast(direction):
-    """Настройка контраста"""
-    global contrast, camera
-    if direction == 'up':
-        contrast += 10
-    else:
-        contrast -= 10
-    contrast = max(-100, min(100, contrast))
-    if camera:
-        camera.set(cv2.CAP_PROP_CONTRAST, contrast)
-    return {'contrast': contrast}
-
 @app.route('/status')
 def status():
     """Проверка статуса"""
@@ -444,15 +305,14 @@ def status():
 @app.teardown_appcontext
 def cleanup(exception=None):
     """Очистка при завершении"""
-    global running, camera
-    running = False
+    global camera
     if camera:
         camera.release()
     print("📷 Камера освобождена")
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("🎥 USB Camera Web Server - GUI Version")
+    print("🎥 USB Camera Web Server - Live Stream")
     print("=" * 60)
     
     if init_camera():
