@@ -12,7 +12,7 @@ def get_camera():
     global camera
     if camera is None:
         # Используем первую USB камеру (индекс 0)
-        camera = camera_pi.Camera(src=0)
+        camera = camera1_pi.Camera(src=0)
     return camera
 
 @app.route('/')
