@@ -1,0 +1,9 @@
+ls /dev/video*
+python3 -c "
+import cv2
+for i in range(20):
+    cap = cv2.VideoCapture(i)
+    if cap.isOpened():
+        print(f'Камера {i} работает')
+        cap.release()
+"
