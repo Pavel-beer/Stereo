@@ -4,7 +4,7 @@
 from flask import Flask, render_template, request, Response
 from camera_dual_usb import DualUSBCamera
 import RPi.GPIO as GPIO
-from angleServoCtrl import setServoAngle   # предполагается, что этот файл у вас есть
+from angleServoCtrl.py import setServoAngle   # предполагается, что этот файл у вас есть
 
 app = Flask(__name__)
 
